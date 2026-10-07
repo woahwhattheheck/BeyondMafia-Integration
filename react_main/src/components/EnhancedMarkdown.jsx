@@ -1,3 +1,5 @@
+// Adapted 2026-10-05 from quantbitrealmSimon / BeyondMafia PR956.
+// Correct placeholder capture/index handling; CC BY-NC-SA 4.0, see LICENSE.
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
@@ -67,11 +69,12 @@ export default function EnhancedMarkdown({ source, ...props }) {
 			if (!value) return null;
 
 			// Split by placeholders and render accordingly
-			const parts = value.split(/(\[\[(SPOILER_|YOUTUBE_|SOUNDCLOUD_)(\d+)\]\])/);
+			const parts = value.split(/(\[\[(?:SPOILER|YOUTUBE|SOUNDCLOUD)_\d+\]\])/);
 
 			return parts.map((part, i) => {
-				if (part.startsWith("[[SPOILER_")) {
-					const index = parseInt(parts[i + 1], 10);
+				const placeholder = part.match(/^\[\[(SPOILER|YOUTUBE|SOUNDCLOUD)_(\d+)\]\]$/);
+				const index = placeholder ? parseInt(placeholder[2], 10) : -1;
+				if (placeholder && placeholder[1] === "SPOILER" && index < spoilers.length) {
 					const isRevealed = revealedSpoilers.has(`${index}-${i}`);
 					return (
 						<span
@@ -82,8 +85,7 @@ export default function EnhancedMarkdown({ source, ...props }) {
 						</span>
 					);
 				}
-				if (part.startsWith("[[YOUTUBE_")) {
-					const index = parseInt(parts[i + 1], 10);
+				if (placeholder && placeholder[1] === "YOUTUBE" && index < youtubeVideos.length) {
 					const videoId = youtubeVideos[index];
 					return (
 						<div key={`youtube-${i}`} className="embed-container youtube-embed">
@@ -99,8 +101,7 @@ export default function EnhancedMarkdown({ source, ...props }) {
 						</div>
 					);
 				}
-				if (part.startsWith("[[SOUNDCLOUD_")) {
-					const index = parseInt(parts[i + 1], 10);
+				if (placeholder && placeholder[1] === "SOUNDCLOUD" && index < soundcloudTracks.length) {
 					const trackUrl = soundcloudTracks[index];
 					return (
 						<div key={`soundcloud-${i}`} className="embed-container soundcloud-embed">
@@ -114,10 +115,6 @@ export default function EnhancedMarkdown({ source, ...props }) {
 							/>
 						</div>
 					);
-				}
-				// Skip the placeholder index numbers
-				if (/^\d+$/.test(part) && i > 0 && /\[\[(SPOILER_|YOUTUBE_|SOUNDCLOUD_)/.test(parts[i - 1])) {
-					return null;
 				}
 				// Skip empty strings
 				if (!part) return null;
